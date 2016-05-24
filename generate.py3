@@ -79,9 +79,9 @@ def fn_get_config(cwd, conf_path):
     return ret
 
 func_map = {
-    "WINT::Fn::FromFolder": fn_from_folder,
-    "WINT::Fn::FileAsBase64": fn_file_as_base64,
-    "WINT::Fn::GetConfig": fn_get_config
+    "TVLK::Fn::FromFolder": fn_from_folder,
+    "TVLK::Fn::FileAsBase64": fn_file_as_base64,
+    "TVLK::Fn::GetConfig": fn_get_config
 }
 
 if __name__ == '__main__':
