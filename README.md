@@ -1,4 +1,4 @@
-T# AWS CloudFormation tools
+# AWS CloudFormation tools
 ## generate.py3
 `generate.py3` will consume yaml document, process it and output final json file. there are some custom function just like [aws cloud formation intrinsic function](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference.html)
 
@@ -14,5 +14,6 @@ available custom function:
 
 `config.yaml` is optional.
 
-TODO: add more documentation, usage, how to, etc.
+# TODO
+- add more documentation, usage, how to, etc.
 
