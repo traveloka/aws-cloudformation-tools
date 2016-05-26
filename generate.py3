@@ -32,7 +32,13 @@ def process_file(cwd, file_name):
     with open(path.join(cwd, file_name)) as file:
         obj = yaml.load(file)
 
-    return process_object(cwd, obj)
+    try:
+        obj = process_object(cwd, obj)
+    except Exception as e:
+        print("Error Processing %s" % path.join(cwd, file_name), file=sys.stderr)
+        raise e
+
+    return obj
 
 
 def process_object(cwd, obj):
