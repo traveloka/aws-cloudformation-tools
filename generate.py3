@@ -54,15 +54,19 @@ def process_object(cwd, obj):
     return obj
 
 
-def fn_from_folder(cwd, dirname):
-    obj = {}
-    cwd = path.join(cwd, dirname)
+def fn_from_folders(cwd, dirname):
+    if not isinstance(dirname, list):
+        return fn_from_folders(cwd, [dirname])
 
-    for file_name in os.listdir(cwd):
-        match = re.search(r'(.*)\.yaml$', file_name)
-        if match and path.isfile(path.join(cwd, file_name)):
-            key = match.group(1)
-            obj[key] = process_file(cwd, file_name)
+    obj = {}
+    for diritem in dirname:
+        curcwd = path.join(cwd, diritem)
+
+        for file_name in os.listdir(curcwd):
+            match = re.search(r'(.*)\.yaml$', file_name)
+            if match and path.isfile(path.join(curcwd, file_name)):
+                key = match.group(1)
+                obj[key] = process_file(curcwd, file_name)
 
     return obj
 
@@ -85,7 +89,8 @@ def fn_get_config(cwd, conf_path):
     return ret
 
 func_map = {
-    "TVLK::Fn::FromFolder": fn_from_folder,
+    "TVLK::Fn::FromFolder": fn_from_folders,
+    "TVLK::Fn::FromFolders": fn_from_folders,
     "TVLK::Fn::FileAsBase64": fn_file_as_base64,
     "TVLK::Fn::GetConfig": fn_get_config
 }
