@@ -42,14 +42,15 @@ def process_file(cwd, file_name):
 
 
 def process_object(cwd, obj):
-    if not isinstance(obj, dict):
-        return obj
+    if isinstance(obj, dict):
+        for key in obj.keys():
+            if key in func_map:
+                return func_map[key](cwd, obj[key])
+            else:
+                obj[key] = process_object(cwd, obj[key])
 
-    for key in obj.keys():
-        if key in func_map:
-            return func_map[key](cwd, obj[key])
-        else:
-            obj[key] = process_object(cwd, obj[key])
+    elif isinstance(obj, list):
+        return [process_object(cwd, tmp) for tmp in obj]
 
     return obj
 
