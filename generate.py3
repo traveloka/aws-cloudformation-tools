@@ -91,11 +91,23 @@ def fn_get_config(cwd, conf_path):
 
     return ret
 
+def fn_merge(cwd, what):
+    retobj = {}
+    for item in what:
+        item = process_object(cwd, item)
+        for key in item.keys():
+            if key in retobj.keys():
+                raise ValueError("'%s' is already declared" % key)
+            retobj[key] = item
+
+    return retobj
+
 func_map = {
     "TVLK::Fn::FromFile": process_file,
     "TVLK::Fn::FromFolders": fn_from_folders,
     "TVLK::Fn::FileAsBase64": fn_file_as_base64,
-    "TVLK::Fn::GetConfig": fn_get_config
+    "TVLK::Fn::GetConfig": fn_get_config,
+    "TVLK::Fn::Merge": fn_merge
 }
 
 if __name__ == '__main__':
