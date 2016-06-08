@@ -98,7 +98,7 @@ def fn_merge(cwd, what):
         for key in item.keys():
             if key in retobj.keys():
                 raise ValueError("'%s' is already declared" % key)
-            retobj[key] = item
+            retobj[key] = item[key]
 
     return retobj
 
