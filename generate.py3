@@ -92,6 +92,7 @@ def fn_get_config(cwd, conf_path):
     return ret
 
 func_map = {
+    "TVLK::Fn::FromFile": process_file,
     "TVLK::Fn::FromFolders": fn_from_folders,
     "TVLK::Fn::FileAsBase64": fn_file_as_base64,
     "TVLK::Fn::GetConfig": fn_get_config
