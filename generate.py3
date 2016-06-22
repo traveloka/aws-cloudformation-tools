@@ -98,6 +98,7 @@ def fn_merge(cwd, listobj):
     return obj
 
 def fn_concat(cwd, liststr):
+    liststr = [process_object(cwd, item) for item in liststr]
     return "".join(liststr)
 
 
