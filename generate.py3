@@ -7,6 +7,7 @@ import json
 import re
 import base64
 import boto3
+import argparse
 from os import path
 
 config = {}
@@ -20,20 +21,33 @@ def get_cf_client():
 
 
 def main(argv):
-    if len(argv) < 2:
-        print("Usage: %s <main.yml> [config.yaml]" % argv[0])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("main", type=str, help="top main.yaml to be process")
+    parser.add_argument("-c", "--config", type=str, help="config.yaml to be used", default=None)
+    parser.add_argument("-o", "--output", type=str, help="output file", default=None)
+    argv = parser.parse_args(argv[1:])
+
+    main_file = argv.main
+
+    if argv.config != None:
+        global config
+        with open(argv.config) as file:
+            config = yaml.load(file)
+        config = process_object(path.dirname(argv.config), config)
+
+    root_obj = None
+    try:
+        root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
+        root_obj = json.dumps(root_obj)
+    except Exception as e:
+        print(repr(e), file=sys.stderr)
         exit(1)
 
-    main_file = argv[1]
-
-    if len(argv) >= 3:
-        global config
-        with open(argv[2]) as file:
-            config = yaml.load(file)
-        config = process_object(path.dirname(argv[2]), config)
-
-    root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
-    print(json.dumps(root_obj))
+    if argv.output == None:
+        print(root_obj)
+    else:
+        with open(argv.output, 'w') as file:
+            print(root_obj, file=file)
 
 def process_object(cwd, obj):
     if isinstance(obj, dict):
@@ -118,6 +132,38 @@ def fn_concat(cwd, item_list):
     item_list = [process_object(cwd, item) for item in item_list]
     return "".join(item_list)
 
+def fn_if(cwd, argv):
+    cond = process_object(cwd, argv[0])
+    if type(cond) != type(True):
+        raise ValueError("condition must be 'True' or 'False'")
+    if cond:
+        return process_object(cwd, argv[1])
+    else:
+        return process_object(cwd, argv[2])
+
+def fn_equals(cwd, argv):
+    return process_object(cwd, argv[0]) == process_object(cwd, argv[1])
+
+def fn_and(cwd, argv):
+    cond1 = process_object(cwd, argv[0])
+    cond2 = process_object(cwd, argv[1])
+    if type(cond1) != type(True) or type(cond2) != type(True):
+        raise ValueError("condition must be 'True' or 'False'")
+    return cond1 and cond2
+
+def fn_or(cwd, argv):
+    cond1 = process_object(cwd, argv[0])
+    cond2 = process_object(cwd, argv[1])
+    if type(cond1) != type(True) or type(cond2) != type(True):
+        raise ValueError("condition must be 'True' or 'False'")
+    return cond1 or cond2
+
+def fn_not(cwd, arg):
+    cond = process_object(cwd, arg)
+    if type(cond) != type(True):
+        raise ValueError("condition must be 'True' or 'False'")
+    return not cond
+
 def fn_awscf_get_stack_resource(cwd, argv):
     cf_client = get_cf_client()
     ret = cf_client.describe_stack_resource(
@@ -131,38 +177,6 @@ def fn_awscf_get_stack_resource(cwd, argv):
         )
 
     return ret["StackResourceDetail"]["PhysicalResourceId"]
-
-def fn_if(cwd, argv):
-    cond = process_object(cwd, argv[0])
-    if(type(cond) != type(True)):
-        raise ValueError("condition must be 'True' or 'False'")
-    if cond:
-        return process_object(cwd, argv[1])
-    else:
-        return process_object(cwd, argv[2])
-
-def fn_equals(cwd, argv):
-    return process_object(cwd, argv[0]) == process_object(cwd, argv[1])
-
-def fn_and(cwd, argv):
-    cond1 = process_object(cwd, argv[0])
-    cond2 = process_object(cwd, argv[1])
-    if(type(cond1) != type(True) or type(cond2) != type(True)):
-        raise ValueError("condition must be 'True' or 'False'")
-    return cond1 and cond2
-
-def fn_or(cwd, argv):
-    cond1 = process_object(cwd, argv[0])
-    cond2 = process_object(cwd, argv[1])
-    if(type(cond1) != type(True) or type(cond2) != type(True)):
-        raise ValueError("condition must be 'True' or 'False'")
-    return cond1 or cond2
-
-def fn_not(cwd, arg):
-    cond = process_object(cwd, arg)
-    if(type(cond) != type(True)):
-        raise ValueError("condition must be 'True' or 'False'")
-    return not cond
 
 
 func_map = {

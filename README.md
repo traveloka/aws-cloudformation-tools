@@ -4,7 +4,7 @@
 
 usage:
 
-    generate.py3 <main.yaml> [config.yaml]
+    generate.py3 <main.yaml> [-c config.yaml] [-o output.json]
 
 available custom function:
 
@@ -13,7 +13,14 @@ available custom function:
  - `TVLK::Fn::FileAsBase64`, read file and represent it as base64 decoded string
  - `TVLK::Fn::GetConfig`, read value from `config.yaml`
  - `TVLK::Fn::Merge`, merge list of object into single object
+ - `TVLK::Fn::MergeList`, merge list of list into single list
  - `TVLK::Fn::Concat`, concat string
+ - `TVLK::Fn::If`
+ - `TVLK::Fn::Equals`
+ - `TVLK::Fn::And`
+ - `TVLK::Fn::Or`
+ - `TVLK::Fn::Not`
+ - `TVLK::Fn::AWSCFGetStackResource`, get physical id of other cloudformation stack resource
 
 `config.yaml` is optional.
 
