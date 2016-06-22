@@ -8,9 +8,12 @@ usage:
 
 available custom function:
 
- - `TVLK::Fn::FromFolder`, include all yaml file in a folder
+ - `TVLK::Fn::FromFile`, parse single yaml file
+ - `TVLK::Fn::FromFolders`, include all yaml file in a folder
  - `TVLK::Fn::FileAsBase64`, read file and represent it as base64 decoded string
  - `TVLK::Fn::GetConfig`, read value from `config.yaml`
+ - `TVLK::Fn::Merge`, merge list of object into single object
+ - `TVLK::Fn::Concat`, concat string
 
 `config.yaml` is optional.
 
