@@ -6,9 +6,18 @@ import yaml
 import json
 import re
 import base64
+import boto3
 from os import path
 
 config = {}
+
+_cf_client = None
+def get_cf_client():
+    global _cf_client
+    if _cf_client == None:
+        _cf_client = boto3.client('cloudformation')
+    return _cf_client
+
 
 def main(argv):
     if len(argv) < 2:
@@ -98,9 +107,30 @@ def fn_merge(cwd, obj_list):
 
     return ret
 
+def fn_merge_list(cwd, list_list):
+    ret = []
+    for item in list_list:
+        ret.extend(process_object(cwd, item))
+
+    return ret
+
 def fn_concat(cwd, item_list):
     item_list = [process_object(cwd, item) for item in item_list]
     return "".join(item_list)
+
+def fn_awscf_get_stack_resource(cwd, argv):
+    cf_client = get_cf_client()
+    ret = cf_client.describe_stack_resource(
+        StackName=argv[0],
+        LogicalResourceId=argv[1]
+    )
+    status = ret["StackResourceDetail"]["ResourceStatus"]
+    if status not in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+        raise ValueError(
+            "Resource %s in stack %s not in valid state" % (argv[1], argv[0])
+        )
+
+    return ret["StackResourceDetail"]["PhysicalResourceId"]
 
 
 func_map = {
@@ -109,7 +139,10 @@ func_map = {
     "TVLK::Fn::FileAsBase64": fn_file_as_base64,
     "TVLK::Fn::GetConfig": fn_get_config,
     "TVLK::Fn::Merge": fn_merge,
-    "TVLK::Fn::Concat": fn_concat
+    "TVLK::Fn::MergeList": fn_merge_list,
+    "TVLK::Fn::Concat": fn_concat,
+
+    "TVLK::Fn::AWSCFGetStackResource": fn_awscf_get_stack_resource
 }
 
 
