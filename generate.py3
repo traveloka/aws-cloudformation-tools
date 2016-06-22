@@ -132,6 +132,38 @@ def fn_awscf_get_stack_resource(cwd, argv):
 
     return ret["StackResourceDetail"]["PhysicalResourceId"]
 
+def fn_if(cwd, argv):
+    cond = process_object(cwd, argv[0])
+    if(type(cond) != type(True)):
+        raise ValueError("condition must be 'True' or 'False'")
+    if cond:
+        return process_object(cwd, argv[1])
+    else:
+        return process_object(cwd, argv[2])
+
+def fn_equals(cwd, argv):
+    return process_object(cwd, argv[0]) == process_object(cwd, argv[1])
+
+def fn_and(cwd, argv):
+    cond1 = process_object(cwd, argv[0])
+    cond2 = process_object(cwd, argv[1])
+    if(type(cond1) != type(True) or type(cond2) != type(True)):
+        raise ValueError("condition must be 'True' or 'False'")
+    return cond1 and cond2
+
+def fn_or(cwd, argv):
+    cond1 = process_object(cwd, argv[0])
+    cond2 = process_object(cwd, argv[1])
+    if(type(cond1) != type(True) or type(cond2) != type(True)):
+        raise ValueError("condition must be 'True' or 'False'")
+    return cond1 or cond2
+
+def fn_not(cwd, arg):
+    cond = process_object(cwd, arg)
+    if(type(cond) != type(True)):
+        raise ValueError("condition must be 'True' or 'False'")
+    return not cond
+
 
 func_map = {
     "TVLK::Fn::FromFile": fn_process_file,
@@ -141,6 +173,12 @@ func_map = {
     "TVLK::Fn::Merge": fn_merge,
     "TVLK::Fn::MergeList": fn_merge_list,
     "TVLK::Fn::Concat": fn_concat,
+
+    "TVLK::Fn::If": fn_if,
+    "TVLK::Fn::Equals": fn_equals,
+    "TVLK::Fn::And": fn_and,
+    "TVLK::Fn::Or": fn_or,
+    "TVLK::Fn::Not": fn_not,
 
     "TVLK::Fn::AWSCFGetStackResource": fn_awscf_get_stack_resource
 }
