@@ -15,6 +15,7 @@ available custom function:
  - `TVLK::Fn::Merge`, merge list of object into single object
  - `TVLK::Fn::MergeList`, merge list of list into single list
  - `TVLK::Fn::Concat`, concat string
+ - `TVLK::Fn::MakefileAsBase64`, run `make target` and read target file and represent it as base64 decoded string
  - `TVLK::Fn::If`
  - `TVLK::Fn::Equals`
  - `TVLK::Fn::And`

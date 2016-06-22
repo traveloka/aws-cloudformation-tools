@@ -8,6 +8,7 @@ import re
 import base64
 import boto3
 import argparse
+import subprocess
 from os import path
 
 config = {}
@@ -41,6 +42,7 @@ def main(argv):
         root_obj = json.dumps(root_obj)
     except Exception as e:
         print(repr(e), file=sys.stderr)
+        raise e
         exit(1)
 
     if argv.output == None:
@@ -132,6 +134,15 @@ def fn_concat(cwd, item_list):
     item_list = [process_object(cwd, item) for item in item_list]
     return "".join(item_list)
 
+def fn_makefile_as_base64(cwd, argv):
+    cwd = path.join(cwd, argv[0])
+    proc = subprocess.Popen(["make", argv[1]], cwd=cwd, stdout=sys.stderr)
+    proc.wait()
+    if proc.returncode != 0:
+        raise ValueError("make failed: %s" % path.join(argv[0], argv[1]))
+
+    return fn_file_as_base64(cwd, argv[1])
+
 def fn_if(cwd, argv):
     cond = process_object(cwd, argv[0])
     if type(cond) != type(True):
@@ -187,6 +198,7 @@ func_map = {
     "TVLK::Fn::Merge": fn_merge,
     "TVLK::Fn::MergeList": fn_merge_list,
     "TVLK::Fn::Concat": fn_concat,
+    "TVLK::Fn::MakefileAsBase64": fn_makefile_as_base64,
 
     "TVLK::Fn::If": fn_if,
     "TVLK::Fn::Equals": fn_equals,
