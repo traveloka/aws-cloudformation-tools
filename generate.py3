@@ -27,79 +27,79 @@ def main(argv):
 
 def process_object(cwd, obj):
     if isinstance(obj, dict):
+        ret = {}
         for key in obj:
             if key in func_map:
                 return func_map[key](cwd, obj[key])
             else:
-                obj[key] = process_object(cwd, obj[key])
+                ret[key] = process_object(cwd, obj[key])
+        return ret
 
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [process_object(cwd, tmp) for tmp in obj]
 
     return obj
 
 
 def fn_process_file(cwd, file_name):
-    obj = {}
-
     try:
+        ret = {}
         with open(path.join(cwd, file_name)) as file:
-            obj = yaml.load(file)
-        obj = process_object(cwd, obj)
+            ret = yaml.load(file)
+        ret = process_object(cwd, ret)
+        return ret
 
     except Exception as e:
         print("Error Processing %s" % path.join(cwd, file_name), file=sys.stderr)
         raise e
 
-    return obj
+def fn_from_folders(cwd, dir_list):
+    if not isinstance(dir_list, list):
+        return fn_from_folders(cwd, [dir_list])
 
-def fn_from_folders(cwd, dirlist):
-    if not isinstance(dirlist, list):
-        return fn_from_folders(cwd, [dirlist])
-
-    obj = {}
-    for diritem in dirlist:
+    ret = {}
+    for diritem in dir_list:
         curcwd = path.join(cwd, diritem)
 
         for file_name in os.listdir(curcwd):
             match = re.search(r'(.*)\.yaml$', file_name)
             if match:
                 key = match.group(1)
-                if key in obj:
+                if key in ret:
                     raise ValueError("'%s' is already declared" % key)
-                obj[key] = fn_process_file(curcwd, file_name)
+                ret[key] = fn_process_file(curcwd, file_name)
 
-    return obj
+    return ret
 
 def fn_file_as_base64(cwd, file_name):
     file_name = path.join(cwd, file_name)
     with open(file_name, "rb") as file:
         return base64.b64encode(file.read()).decode("UTF-8")
 
-def fn_get_config(cwd, conf_path):
-    if not isinstance(conf_path, list):
-        return fn_get_config(cwd, [conf_path])
+def fn_get_config(cwd, key_path):
+    if not isinstance(key_path, list):
+        return fn_get_config(cwd, [key_path])
 
     ret = config
-    for key in conf_path:
+    for key in key_path:
         ret = ret[key]
 
     return ret
 
-def fn_merge(cwd, listobj):
-    obj = {}
-    for item in listobj:
+def fn_merge(cwd, obj_list):
+    ret = {}
+    for item in obj_list:
         item = process_object(cwd, item)
         for key in item:
-            if key in obj:
+            if key in ret:
                 raise ValueError("'%s' is already declared" % key)
-            obj[key] = item[key]
+            ret[key] = item[key]
 
-    return obj
+    return ret
 
-def fn_concat(cwd, liststr):
-    liststr = [process_object(cwd, item) for item in liststr]
-    return "".join(liststr)
+def fn_concat(cwd, item_list):
+    item_list = [process_object(cwd, item) for item in item_list]
+    return "".join(item_list)
 
 
 func_map = {
