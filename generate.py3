@@ -22,28 +22,12 @@ def main(argv):
             global config
             config = yaml.load(file)
 
-    root_obj = process_file(path.dirname(main_file), path.basename(main_file))
+    root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
     print(json.dumps(root_obj))
-
-
-def process_file(cwd, file_name):
-    obj = {}
-
-    with open(path.join(cwd, file_name)) as file:
-        obj = yaml.load(file)
-
-    try:
-        obj = process_object(cwd, obj)
-    except Exception as e:
-        print("Error Processing %s" % path.join(cwd, file_name), file=sys.stderr)
-        raise e
-
-    return obj
-
 
 def process_object(cwd, obj):
     if isinstance(obj, dict):
-        for key in obj.keys():
+        for key in obj:
             if key in func_map:
                 return func_map[key](cwd, obj[key])
             else:
@@ -55,31 +39,42 @@ def process_object(cwd, obj):
     return obj
 
 
-def fn_from_folders(cwd, dirname):
-    if not isinstance(dirname, list):
-        return fn_from_folders(cwd, [dirname])
+def fn_process_file(cwd, file_name):
+    obj = {}
+
+    try:
+        with open(path.join(cwd, file_name)) as file:
+            obj = yaml.load(file)
+        obj = process_object(cwd, obj)
+
+    except Exception as e:
+        print("Error Processing %s" % path.join(cwd, file_name), file=sys.stderr)
+        raise e
+
+    return obj
+
+def fn_from_folders(cwd, dirlist):
+    if not isinstance(dirlist, list):
+        return fn_from_folders(cwd, [dirlist])
 
     obj = {}
-    for diritem in dirname:
+    for diritem in dirlist:
         curcwd = path.join(cwd, diritem)
 
         for file_name in os.listdir(curcwd):
             match = re.search(r'(.*)\.yaml$', file_name)
-            if match and path.isfile(path.join(curcwd, file_name)):
+            if match:
                 key = match.group(1)
-                if key in obj.keys():
+                if key in obj:
                     raise ValueError("'%s' is already declared" % key)
-                obj[key] = process_file(curcwd, file_name)
+                obj[key] = fn_process_file(curcwd, file_name)
 
     return obj
 
 def fn_file_as_base64(cwd, file_name):
     file_name = path.join(cwd, file_name)
-    if path.isfile(file_name):
-        with open(file_name, "rb") as file:
-            return base64.b64encode(file.read()).decode("UTF-8")
-    else:
-        raise ValueError("%s is not a file" % file_name)
+    with open(file_name, "rb") as file:
+        return base64.b64encode(file.read()).decode("UTF-8")
 
 def fn_get_config(cwd, conf_path):
     if not isinstance(conf_path, list):
@@ -91,24 +86,26 @@ def fn_get_config(cwd, conf_path):
 
     return ret
 
-def fn_merge(cwd, what):
-    retobj = {}
-    for item in what:
+def fn_merge(cwd, listobj):
+    obj = {}
+    for item in listobj:
         item = process_object(cwd, item)
-        for key in item.keys():
-            if key in retobj.keys():
+        for key in item:
+            if key in obj:
                 raise ValueError("'%s' is already declared" % key)
-            retobj[key] = item[key]
+            obj[key] = item[key]
 
-    return retobj
+    return obj
+
 
 func_map = {
-    "TVLK::Fn::FromFile": process_file,
+    "TVLK::Fn::FromFile": fn_process_file,
     "TVLK::Fn::FromFolders": fn_from_folders,
     "TVLK::Fn::FileAsBase64": fn_file_as_base64,
     "TVLK::Fn::GetConfig": fn_get_config,
     "TVLK::Fn::Merge": fn_merge
 }
+
 
 if __name__ == '__main__':
     main(sys.argv)
