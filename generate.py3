@@ -97,13 +97,17 @@ def fn_merge(cwd, listobj):
 
     return obj
 
+def fn_concat(cwd, liststr):
+    return "".join(liststr)
+
 
 func_map = {
     "TVLK::Fn::FromFile": fn_process_file,
     "TVLK::Fn::FromFolders": fn_from_folders,
     "TVLK::Fn::FileAsBase64": fn_file_as_base64,
     "TVLK::Fn::GetConfig": fn_get_config,
-    "TVLK::Fn::Merge": fn_merge
+    "TVLK::Fn::Merge": fn_merge,
+    "TVLK::Fn::Concat": fn_concat
 }
 
 
