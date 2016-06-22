@@ -18,9 +18,10 @@ def main(argv):
     main_file = argv[1]
 
     if len(argv) >= 3:
+        global config
         with open(argv[2]) as file:
-            global config
             config = yaml.load(file)
+        config = process_object(path.dirname(argv[2]), config)
 
     root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
     print(json.dumps(root_obj))
