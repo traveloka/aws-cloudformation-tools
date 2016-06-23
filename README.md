@@ -1,10 +1,10 @@
 # AWS CloudFormation tools
-## generate.py3
+## generate.py
 `generate.py3` will consume yaml document, process it and output final json file. there are some custom function just like [aws cloud formation intrinsic function](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference.html)
 
 usage:
 
-    generate.py3 <main.yaml> [-c config.yaml] [-o output.json]
+    generate.py <main.yaml> [-c config.yaml] [-o output.json]
 
 available custom function:
 
