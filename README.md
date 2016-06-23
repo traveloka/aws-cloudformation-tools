@@ -8,20 +8,20 @@ usage:
 
 available custom function:
 
- - `TVLK::Fn::FromFile`, parse single yaml file
- - `TVLK::Fn::FromFolders`, include all yaml file in a folder
- - `TVLK::Fn::FileAsBase64`, read file and represent it as base64 decoded string
- - `TVLK::Fn::GetConfig`, read value from `config.yaml`
- - `TVLK::Fn::Merge`, merge list of object into single object
- - `TVLK::Fn::MergeList`, merge list of list into single list
- - `TVLK::Fn::Concat`, concat string
- - `TVLK::Fn::MakefileAsBase64`, run `make target` and read target file and represent it as base64 decoded string
- - `TVLK::Fn::If`
- - `TVLK::Fn::Equals`
- - `TVLK::Fn::And`
- - `TVLK::Fn::Or`
- - `TVLK::Fn::Not`
- - `TVLK::Fn::AWSCFGetStackResource`, get physical id of other cloudformation stack resource
+ - `TVLK::FromFile`, parse single yaml file
+ - `TVLK::FromFolders`, include all yaml file in a folder
+ - `TVLK::FileAsBase64`, read file and represent it as base64 decoded string
+ - `TVLK::GetConfig`, read value from `config.yaml`
+ - `TVLK::Merge`, merge list of object into single object
+ - `TVLK::MergeList`, merge list of list into single list
+ - `TVLK::Concat`, concat string
+ - `TVLK::MakefileAsBase64`, run `make target` and read target file and represent it as base64 decoded string
+ - `TVLK::If`
+ - `TVLK::Equals`
+ - `TVLK::And`
+ - `TVLK::Or`
+ - `TVLK::Not`
+ - `TVLK::AWSCFGetStackResource`, get physical id of other cloudformation stack resource
 
 `config.yaml` is optional.
 

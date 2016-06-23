@@ -218,22 +218,22 @@ def fn_awscf_get_stack_resource(cwd, argv):
 
 
 func_map = {
-    "TVLK::Fn::FromFile": fn_process_file,
-    "TVLK::Fn::FromFolders": fn_from_folders,
-    "TVLK::Fn::FileAsBase64": fn_file_as_base64,
-    "TVLK::Fn::GetConfig": fn_get_config,
-    "TVLK::Fn::Merge": fn_merge,
-    "TVLK::Fn::MergeList": fn_merge_list,
-    "TVLK::Fn::Concat": fn_concat,
-    "TVLK::Fn::MakefileAsBase64": fn_makefile_as_base64,
+    "TVLK::FromFile": fn_process_file,
+    "TVLK::FromFolders": fn_from_folders,
+    "TVLK::FileAsBase64": fn_file_as_base64,
+    "TVLK::GetConfig": fn_get_config,
+    "TVLK::Merge": fn_merge,
+    "TVLK::MergeList": fn_merge_list,
+    "TVLK::Concat": fn_concat,
+    "TVLK::MakefileAsBase64": fn_makefile_as_base64,
 
-    "TVLK::Fn::If": fn_if,
-    "TVLK::Fn::Equals": fn_equals,
-    "TVLK::Fn::And": fn_and,
-    "TVLK::Fn::Or": fn_or,
-    "TVLK::Fn::Not": fn_not,
+    "TVLK::If": fn_if,
+    "TVLK::Equals": fn_equals,
+    "TVLK::And": fn_and,
+    "TVLK::Or": fn_or,
+    "TVLK::Not": fn_not,
 
-    "TVLK::Fn::AWSCFGetStackResource": fn_awscf_get_stack_resource
+    "TVLK::AWSCFGetStackResource": fn_awscf_get_stack_resource
 }
 
 
