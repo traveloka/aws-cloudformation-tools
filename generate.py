@@ -9,9 +9,11 @@ import base64
 import boto3
 import argparse
 import subprocess
+import time
 from os import path
 
 config = {}
+option = {}
 
 _cf_client = None
 def get_cf_client():
@@ -26,9 +28,13 @@ def main(argv):
     parser.add_argument("main", type=str, help="top main.yaml to be process")
     parser.add_argument("-c", "--config", type=str, help="config.yaml to be used", default=None)
     parser.add_argument("-o", "--output", type=str, help="output file", default=None)
+    parser.add_argument("-r", "--retry", type=int,
+        help="how many times it will retry to get external resource, it will invoked every 10 second", default=0)
+
     argv = parser.parse_args(argv[1:])
 
     main_file = argv.main
+    option["external_retry"] = argv.retry
 
     if argv.config != None:
         global config
@@ -41,9 +47,7 @@ def main(argv):
         root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
         root_obj = json.dumps(root_obj)
     except Exception as e:
-        print(repr(e), file=sys.stderr)
         raise e
-        exit(1)
 
     if argv.output == None:
         print(root_obj)
@@ -177,15 +181,29 @@ def fn_not(cwd, arg):
 
 def fn_awscf_get_stack_resource(cwd, argv):
     cf_client = get_cf_client()
-    ret = cf_client.describe_stack_resource(
-        StackName=argv[0],
-        LogicalResourceId=argv[1]
-    )
-    status = ret["StackResourceDetail"]["ResourceStatus"]
-    if status not in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
-        raise ValueError(
-            "Resource %s in stack %s not in valid state" % (argv[1], argv[0])
-        )
+    ret = {}
+
+    attempt = 0
+    while True:
+        attempt = attempt + 1
+        try:
+            ret = cf_client.describe_stack_resource(
+                StackName=argv[0],
+                LogicalResourceId=argv[1]
+            )
+            if ret["StackResourceDetail"]["ResourceStatus"] in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+                break
+        except Exception as e:
+            pass
+
+        if option["external_retry"] >= 0 and attempt >= option["external_retry"]:
+            raise ValueError("Resource %s in stack %s not available" % (argv[1], argv[0]))
+        else:
+            print(
+                "Resource %s in stack %s not available, try again in 10 seconds" % (argv[1], argv[0]),
+                file=sys.stderr
+            )
+            time.sleep(10)
 
     return ret["StackResourceDetail"]["PhysicalResourceId"]
 
