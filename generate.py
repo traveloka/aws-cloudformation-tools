@@ -30,6 +30,7 @@ def main(argv):
     parser.add_argument("-o", "--output", type=str, help="output file", default=None)
     parser.add_argument("-r", "--retry", type=int,
         help="how many times it will retry to get external resource, it will invoked every 10 second", default=0)
+    parser.add_argument("--generate_config_only", action="store_true", default=False, help="Only parse config.yaml and output it as json")
 
     argv = parser.parse_args(argv[1:])
 
@@ -39,15 +40,23 @@ def main(argv):
     if argv.config != None:
         global config
         with open(argv.config) as file:
-            config = yaml.load(file)
-        config = process_object(path.dirname(argv.config), config)
+            new_config = yaml.load(file)
+        while True:
+            config = new_config
+            new_config = process_object(path.dirname(argv.config), config)
+            if new_config == config:
+                config = new_config
+                break
 
     root_obj = None
-    try:
-        root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
-        root_obj = json.dumps(root_obj)
-    except Exception as e:
-        raise e
+    if not argv.generate_config_only:
+        try:
+            root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
+            root_obj = json.dumps(root_obj)
+        except Exception as e:
+            raise e
+    else:
+        root_obj = json.dumps(config)
 
     if argv.output == None:
         print(root_obj)
