@@ -16,11 +16,19 @@ config = {}
 option = {}
 
 _cf_client = None
+_ec2_client = None
+
 def get_cf_client():
     global _cf_client
     if _cf_client == None:
         _cf_client = boto3.client('cloudformation')
     return _cf_client
+
+def get_ec2_client():
+    global _ec2_client
+    if _ec2_client == None:
+        _ec2_client = boto3.client('ec2')
+    return _ec2_client
 
 
 def main(argv):
@@ -188,9 +196,9 @@ def fn_not(cwd, arg):
         raise ValueError("condition must be 'True' or 'False'")
     return not cond
 
-def fn_awscf_get_stack_resource(cwd, argv):
+def fn_awscf_stack_resource(cwd, argv):
     cf_client = get_cf_client()
-    ret = {}
+    ret = None
 
     attempt = 0
     while True:
@@ -216,6 +224,48 @@ def fn_awscf_get_stack_resource(cwd, argv):
 
     return ret["StackResourceDetail"]["PhysicalResourceId"]
 
+def fn_awsec2_public_ip(cwd, instance_id):
+    ec2_client = get_ec2_client()
+
+    attempt = 0
+    while True:
+        attempt = attempt + 1
+        try:
+            ret = ec2_client.describe_instances(InstanceIds=[instance_id])
+            return ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['Association']['PublicIp']
+        except Exception as e:
+            pass
+
+        if option["external_retry"] >= 0 and attempt >= option["external_retry"]:
+            raise ValueError("Cannot get public ip of %s" % instance_id)
+        else:
+            print(
+                "Cannot get public ip of %s" % instance_id,
+                file=sys.stderr
+            )
+            time.sleep(10)
+
+def fn_awsec2_private_ip(cwd, instance_id):
+    ec2_client = get_ec2_client()
+
+    attempt = 0
+    while True:
+        attempt = attempt + 1
+        try:
+            ret = ec2_client.describe_instances(InstanceIds=[instance_id])
+            return ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['PrivateIpAddress']
+        except Exception as e:
+            pass
+
+        if option["external_retry"] >= 0 and attempt >= option["external_retry"]:
+            raise ValueError("Cannot get public ip of %s" % instance_id)
+        else:
+            print(
+                "Cannot get public ip of %s" % instance_id,
+                file=sys.stderr
+            )
+            time.sleep(10)
+
 
 func_map = {
     "TVLK::FromFile": fn_process_file,
@@ -233,7 +283,9 @@ func_map = {
     "TVLK::Or": fn_or,
     "TVLK::Not": fn_not,
 
-    "TVLK::AWSCFGetStackResource": fn_awscf_get_stack_resource
+    "TVLK::AWSCFStackResource": fn_awscf_stack_resource,
+    "TVLK::AWSEC2PublicIp": fn_awsec2_public_ip,
+    "TVLK::AWSEC2PrivateIp": fn_awsec2_private_ip
 }
 
 
