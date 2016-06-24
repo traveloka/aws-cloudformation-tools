@@ -139,6 +139,7 @@ class TVLK:
 
     def Merge(cwd, obj_list):
         ret = {}
+        obj_list = process_object(cwd, obj_list)
         for item in obj_list:
             item = process_object(cwd, item)
             for key in item:
