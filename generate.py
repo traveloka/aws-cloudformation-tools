@@ -53,14 +53,17 @@ def main(argv):
     Options.retry = argv.retry
 
     if argv.config != None:
-        global config
-        with open(argv.config) as file:
-            new_config = yaml.load(file)
-        while True:
-            config = new_config
-            new_config = process_object(path.dirname(argv.config), config)
-            if new_config == config:
-                break
+        try:
+            global config
+            with open(argv.config) as file:
+                new_config = yaml.load(file)
+            while True:
+                config = new_config
+                new_config = process_object(path.dirname(argv.config), config)
+                if new_config == config:
+                    break
+        except Exception as e:
+            raise Exception("Error on processing config file") from e
 
     root = None
     if not argv.generate_config_only:
