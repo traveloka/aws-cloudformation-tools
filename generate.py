@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import yaml
-import json
-import re
+import argparse
 import base64
 import boto3
-import argparse
+import json
+import os
+import re
 import subprocess
+import sys
 import time
+import yaml
 from os import path
 
 _cf_client = None
@@ -37,14 +37,14 @@ class Options:
 def main(argv):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("main", type=str, help="top main.yaml to be process")
-    parser.add_argument("output", type=str, help="output file")
+    parser.add_argument("main", type=str, help="main.yaml as input file")
+    parser.add_argument("output", type=str, help="output.json as output file")
     parser.add_argument("-c", "--config", type=str, default=None, help="config.yaml to be used")
     parser.add_argument("-r", "--retry", type=int, default=0,
         help="how many times it will retry to get external resource, retrying is done every 5 second",
     )
     parser.add_argument("--generate_config_only", action="store_true", default=False,
-        help="Only parse config.yaml and output it as json"
+        help="Only parse config.yaml and output it"
     )
 
     argv = parser.parse_args(argv[1:])
@@ -108,7 +108,7 @@ class TVLK:
         cwd = path.join(cwd, folder)
 
         for file_name in os.listdir(cwd):
-            match = re.search(r'(.*)\.yaml$', file_name)
+            match = re.search(r'^(.*)\.yaml$', file_name)
             if match:
                 ret[match.group(1)] = TVLK.FromFile(cwd, file_name)
 
@@ -156,6 +156,11 @@ class TVLK:
 
         return ret
 
+    def Select(cwd, argv):
+        index = argv[0]
+        collection = argv[1]
+        return process_object(cwd, collection[index])
+
     def Concat(cwd, obj_list):
         obj_list = process_object(cwd, obj_list)
         return "".join(obj_list)
@@ -175,8 +180,7 @@ class TVLK:
         return process_object(cwd, obj1) == process_object(cwd, obj2)
 
     def Not(cwd, cond):
-        cond = process_object(cwd, cond)
-        return not cond
+        return not process_object(cwd, cond)
 
     def And(cwd, argv):
         cond1 = argv[0]
@@ -194,7 +198,7 @@ class TVLK:
         logical_id = argv[1]
 
         cf = get_cf_client()
-        attempt = 0
+        attempt = -1
 
         while True:
             attempt = attempt + 1
@@ -205,7 +209,7 @@ class TVLK:
                 )
                 ret = ret["StackResourceDetail"]
                 if ret["ResourceStatus"] in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
-                    raise Exception("resouorce '%s' in stack %s is not ready" % (logical_id, stack) )
+                    raise Exception("resource '%s' in stack %s is not ready" % (logical_id, stack) )
                 return ret["PhysicalResourceId"]
 
             except Exception as e:
@@ -216,7 +220,7 @@ class TVLK:
 
     def EC2PublicIp(cwd, instance_id):
         ec2 = get_ec2_client()
-        attempt = 0
+        attempt = -1
 
         while True:
             attempt = attempt + 1
@@ -235,7 +239,7 @@ class TVLK:
 
     def EC2PrivateIp(cwd, instance_id):
         ec2 = get_ec2_client()
-        attempt = 0
+        attempt = -1
 
         while True:
             attempt = attempt + 1
