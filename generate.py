@@ -12,9 +12,6 @@ import subprocess
 import time
 from os import path
 
-config = {}
-option = {}
-
 _cf_client = None
 _ec2_client = None
 
@@ -31,19 +28,29 @@ def get_ec2_client():
     return _ec2_client
 
 
+config = {}
+
+class Options:
+    retry = 0
+
+
 def main(argv):
     parser = argparse.ArgumentParser()
+
     parser.add_argument("main", type=str, help="top main.yaml to be process")
-    parser.add_argument("-c", "--config", type=str, help="config.yaml to be used", default=None)
-    parser.add_argument("-o", "--output", type=str, help="output file", default=None)
-    parser.add_argument("-r", "--retry", type=int,
-        help="how many times it will retry to get external resource, it will invoked every 10 second", default=0)
-    parser.add_argument("--generate_config_only", action="store_true", default=False, help="Only parse config.yaml and output it as json")
+    parser.add_argument("output", type=str, help="output file")
+    parser.add_argument("-c", "--config", type=str, default=None, help="config.yaml to be used")
+    parser.add_argument("-r", "--retry", type=int, default=0,
+        help="how many times it will retry to get external resource, retrying is done every 5 second",
+    )
+    parser.add_argument("--generate_config_only", action="store_true", default=False,
+        help="Only parse config.yaml and output it as json"
+    )
 
     argv = parser.parse_args(argv[1:])
 
     main_file = argv.main
-    option["external_retry"] = argv.retry
+    Options.retry = argv.retry
 
     if argv.config != None:
         global config
@@ -53,241 +60,197 @@ def main(argv):
             config = new_config
             new_config = process_object(path.dirname(argv.config), config)
             if new_config == config:
-                config = new_config
                 break
 
-    root_obj = None
+    root = None
     if not argv.generate_config_only:
-        try:
-            root_obj = fn_process_file(path.dirname(main_file), path.basename(main_file))
-            root_obj = json.dumps(root_obj)
-        except Exception as e:
-            raise e
+        root = TVLK.FromFile(path.dirname(main_file), path.basename(main_file))
+        root = json.dumps(root)
     else:
-        root_obj = json.dumps(config)
+        root = json.dumps(config)
 
-    if argv.output == None:
-        print(root_obj)
-    else:
-        with open(argv.output, 'w') as file:
-            print(root_obj, file=file)
+    with open(argv.output, 'w') as file:
+        print(root, file=file)
 
-def process_object(cwd, obj):
-    if isinstance(obj, dict):
+def process_object(cwd, what):
+    if isinstance(what, list):
+        return [process_object(cwd, item) for item in what]
+
+    if isinstance(what, dict):
         ret = {}
-        for key in obj:
-            if key in func_map:
-                return func_map[key](cwd, obj[key])
+        for key in what:
+            match = re.search(r'^TVLK::(.*)$', key)
+            if match:
+                if len(what) == 1:
+                    return getattr(TVLK, match.group(1))(cwd, what[key])
+                else:
+                    raise Exception("function '%s' must not have sibling" % key)
             else:
-                ret[key] = process_object(cwd, obj[key])
+                ret[key] = process_object(cwd, what[key])
         return ret
 
-    if isinstance(obj, list):
-        return [process_object(cwd, tmp) for tmp in obj]
-
-    return obj
+    return what
 
 
-def fn_process_file(cwd, file_name):
-    try:
+class TVLK:
+    def FromFile(cwd, file_name):
+        try:
+            ret = {}
+            with open(path.join(cwd, file_name)) as file:
+                ret = yaml.load(file)
+            return process_object(cwd, ret)
+
+        except Exception as e:
+            raise Exception("Error Processing file '%s'" % path.join(cwd, file_name)) from e
+
+    def FromFolder(cwd, folder):
         ret = {}
-        with open(path.join(cwd, file_name)) as file:
-            ret = yaml.load(file)
-        ret = process_object(cwd, ret)
-        return ret
+        cwd = path.join(cwd, folder)
 
-    except Exception as e:
-        print("Error Processing %s" % path.join(cwd, file_name), file=sys.stderr)
-        raise e
-
-def fn_from_folders(cwd, dir_list):
-    if not isinstance(dir_list, list):
-        return fn_from_folders(cwd, [dir_list])
-
-    ret = {}
-    for diritem in dir_list:
-        curcwd = path.join(cwd, diritem)
-
-        for file_name in os.listdir(curcwd):
+        for file_name in os.listdir(cwd):
             match = re.search(r'(.*)\.yaml$', file_name)
             if match:
-                key = match.group(1)
+                ret[match.group(1)] = TVLK.FromFile(cwd, file_name)
+
+        return ret
+
+    def Base64OfFile(cwd, file_name):
+        file_name = path.join(cwd, file_name)
+        with open(file_name, "rb") as file:
+            return base64.b64encode(file.read()).decode("utf8")
+
+    def Base64OfMakefileTarget(cwd, argv):
+        makefile_dir = argv[0]
+        makefile_target = argv[1]
+        cwd = path.join(cwd, makefile_dir)
+        proc = subprocess.Popen(["make", makefile_target], cwd=cwd)
+        proc.wait()
+        if proc.returncode != 0:
+            raise Exception("Makefile failed to build target %s" % path.join(cwd, makefile_target))
+
+        return TVLK.Base64OfFile(cwd, makefile_target)
+
+    def Config(cwd, key_list):
+        ret = config
+        for key in key_list:
+            ret = ret[key]
+
+        return ret
+
+    def Merge(cwd, obj_list):
+        ret = {}
+        for item in obj_list:
+            item = process_object(cwd, item)
+            for key in item:
                 if key in ret:
-                    raise ValueError("'%s' is already declared" % key)
-                ret[key] = fn_process_file(curcwd, file_name)
+                    raise Exception("'%s' is already declared" % key)
+                ret[key] = item[key]
 
-    return ret
+        return ret
 
-def fn_file_as_base64(cwd, file_name):
-    file_name = path.join(cwd, file_name)
-    with open(file_name, "rb") as file:
-        return base64.b64encode(file.read()).decode("UTF-8")
+    def MergeList(cwd, list_list):
+        ret = []
+        for item in list_list:
+            item = process_object(cwd, item)
+            ret.extend(item)
 
-def fn_get_config(cwd, key_path):
-    if not isinstance(key_path, list):
-        return fn_get_config(cwd, [key_path])
+        return ret
 
-    ret = config
-    for key in key_path:
-        ret = ret[key]
+    def Concat(cwd, obj_list):
+        obj_list = process_object(cwd, obj_list)
+        return "".join(obj_list)
 
-    return ret
-
-def fn_merge(cwd, obj_list):
-    ret = {}
-    for item in obj_list:
-        item = process_object(cwd, item)
-        for key in item:
-            if key in ret:
-                raise ValueError("'%s' is already declared" % key)
-            ret[key] = item[key]
-
-    return ret
-
-def fn_merge_list(cwd, list_list):
-    ret = []
-    for item in list_list:
-        ret.extend(process_object(cwd, item))
-
-    return ret
-
-def fn_concat(cwd, item_list):
-    item_list = [process_object(cwd, item) for item in item_list]
-    return "".join(item_list)
-
-def fn_makefile_as_base64(cwd, argv):
-    cwd = path.join(cwd, argv[0])
-    proc = subprocess.Popen(["make", argv[1]], cwd=cwd, stdout=sys.stderr)
-    proc.wait()
-    if proc.returncode != 0:
-        raise ValueError("make failed: %s" % path.join(argv[0], argv[1]))
-
-    return fn_file_as_base64(cwd, argv[1])
-
-def fn_if(cwd, argv):
-    cond = process_object(cwd, argv[0])
-    if type(cond) != type(True):
-        raise ValueError("condition must be 'True' or 'False'")
-    if cond:
-        return process_object(cwd, argv[1])
-    else:
-        return process_object(cwd, argv[2])
-
-def fn_equals(cwd, argv):
-    return process_object(cwd, argv[0]) == process_object(cwd, argv[1])
-
-def fn_and(cwd, argv):
-    cond1 = process_object(cwd, argv[0])
-    cond2 = process_object(cwd, argv[1])
-    if type(cond1) != type(True) or type(cond2) != type(True):
-        raise ValueError("condition must be 'True' or 'False'")
-    return cond1 and cond2
-
-def fn_or(cwd, argv):
-    cond1 = process_object(cwd, argv[0])
-    cond2 = process_object(cwd, argv[1])
-    if type(cond1) != type(True) or type(cond2) != type(True):
-        raise ValueError("condition must be 'True' or 'False'")
-    return cond1 or cond2
-
-def fn_not(cwd, arg):
-    cond = process_object(cwd, arg)
-    if type(cond) != type(True):
-        raise ValueError("condition must be 'True' or 'False'")
-    return not cond
-
-def fn_awscf_stack_resource(cwd, argv):
-    cf_client = get_cf_client()
-    ret = None
-
-    attempt = 0
-    while True:
-        attempt = attempt + 1
-        try:
-            ret = cf_client.describe_stack_resource(
-                StackName=argv[0],
-                LogicalResourceId=argv[1]
-            )
-            if ret["StackResourceDetail"]["ResourceStatus"] in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
-                break
-        except Exception as e:
-            pass
-
-        if option["external_retry"] >= 0 and attempt >= option["external_retry"]:
-            raise ValueError("Resource %s in stack %s not available" % (argv[1], argv[0]))
+    def If(cwd, argv):
+        cond = argv[0]
+        result_true = argv[1]
+        result_false = argv[2]
+        if process_object(cwd, cond):
+            return process_object(cwd, result_true)
         else:
-            print(
-                "Resource %s in stack %s not available, try again in 10 seconds" % (argv[1], argv[0]),
-                file=sys.stderr
-            )
-            time.sleep(10)
+            return process_object(cwd, result_false)
 
-    return ret["StackResourceDetail"]["PhysicalResourceId"]
+    def Equals(cwd, argv):
+        obj1 = argv[0]
+        obj2 = argv[1]
+        return process_object(cwd, obj1) == process_object(cwd, obj2)
 
-def fn_awsec2_public_ip(cwd, instance_id):
-    ec2_client = get_ec2_client()
+    def Not(cwd, cond):
+        cond = process_object(cwd, cond)
+        return not cond
 
-    attempt = 0
-    while True:
-        attempt = attempt + 1
-        try:
-            ret = ec2_client.describe_instances(InstanceIds=[instance_id])
-            return ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['Association']['PublicIp']
-        except Exception as e:
-            pass
-
-        if option["external_retry"] >= 0 and attempt >= option["external_retry"]:
-            raise ValueError("Cannot get public ip of %s" % instance_id)
-        else:
-            print(
-                "Cannot get public ip of %s" % instance_id,
-                file=sys.stderr
-            )
-            time.sleep(10)
-
-def fn_awsec2_private_ip(cwd, instance_id):
-    ec2_client = get_ec2_client()
-
-    attempt = 0
-    while True:
-        attempt = attempt + 1
-        try:
-            ret = ec2_client.describe_instances(InstanceIds=[instance_id])
-            return ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['PrivateIpAddress']
-        except Exception as e:
-            pass
-
-        if option["external_retry"] >= 0 and attempt >= option["external_retry"]:
-            raise ValueError("Cannot get public ip of %s" % instance_id)
-        else:
-            print(
-                "Cannot get public ip of %s" % instance_id,
-                file=sys.stderr
-            )
-            time.sleep(10)
+    def And(cwd, argv):
+        cond1 = argv[0]
+        cond2 = argv[1]
+        return process_object(cwd, cond1) and process_object(cwd, cond2)
 
 
-func_map = {
-    "TVLK::FromFile": fn_process_file,
-    "TVLK::FromFolders": fn_from_folders,
-    "TVLK::FileAsBase64": fn_file_as_base64,
-    "TVLK::GetConfig": fn_get_config,
-    "TVLK::Merge": fn_merge,
-    "TVLK::MergeList": fn_merge_list,
-    "TVLK::Concat": fn_concat,
-    "TVLK::MakefileAsBase64": fn_makefile_as_base64,
+    def Or(cwd, argv):
+        cond1 = argv[0]
+        cond2 = argv[1]
+        return process_object(cwd, cond1) or process_object(cwd, cond2)
 
-    "TVLK::If": fn_if,
-    "TVLK::Equals": fn_equals,
-    "TVLK::And": fn_and,
-    "TVLK::Or": fn_or,
-    "TVLK::Not": fn_not,
+    def CFStackResource(cwd, argv):
+        stack = argv[0]
+        logical_id = argv[1]
 
-    "TVLK::AWSCFStackResource": fn_awscf_stack_resource,
-    "TVLK::AWSEC2PublicIp": fn_awsec2_public_ip,
-    "TVLK::AWSEC2PrivateIp": fn_awsec2_private_ip
-}
+        cf = get_cf_client()
+        attempt = 0
 
+        while True:
+            attempt = attempt + 1
+            try:
+                ret = cf.describe_stack_resource(
+                    StackName=argv[0],
+                    LogicalResourceId=argv[1]
+                )
+                ret = ret["StackResourceDetail"]
+                if ret["ResourceStatus"] in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+                    raise Exception("resouorce '%s' in stack %s is not ready" % (logical_id, stack) )
+                return ret["PhysicalResourceId"]
+
+            except Exception as e:
+                if Options.retry >= 0 and attempt >= Options.retry:
+                    raise e
+                else:
+                    time.sleep(5)
+
+    def EC2PublicIp(cwd, instance_id):
+        ec2 = get_ec2_client()
+        attempt = 0
+
+        while True:
+            attempt = attempt + 1
+            try:
+                ret = ec2_client.describe_instances(
+                    InstanceIds=[instance_id]
+                )
+                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
+                return ret['Association']['PublicIp']
+
+            except Exception as e:
+                if Options.retry >= 0 and attempt >= Options.retry:
+                    raise e
+                else:
+                    time.sleep(5)
+
+    def EC2PrivateIp(cwd, instance_id):
+        ec2 = get_ec2_client()
+        attempt = 0
+
+        while True:
+            attempt = attempt + 1
+            try:
+                ret = ec2_client.describe_instances(
+                    InstanceIds=[instance_id]
+                )
+                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
+                return ret['PrivateIpAddress']
+
+            except Exception as e:
+                if Options.retry >= 0 and attempt >= Options.retry:
+                    raise e
+                else:
+                    time.sleep(5)
 
 if __name__ == '__main__':
     main(sys.argv)
