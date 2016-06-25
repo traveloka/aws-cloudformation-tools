@@ -134,9 +134,13 @@ class TVLK:
         return TVLK.Base64OfFile(cwd, makefile_target)
 
     def Config(cwd, key_list):
-        ret = config
-        for key in key_list:
-            ret = ret[key]
+        try:
+            ret = config
+            for key in key_list:
+                ret = ret[key]
+
+        except Exception as e:
+            raise Exception("Cannot retrieve data from configuration") from e
 
         return ret
 
