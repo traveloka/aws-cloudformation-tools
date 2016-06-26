@@ -41,7 +41,7 @@ def main(argv):
     parser.add_argument("output", type=str, help="output.json as output file")
     parser.add_argument("-c", "--config", type=str, default=None, help="config.yaml to be used")
     parser.add_argument("-r", "--retry", type=int, default=0,
-        help="how many times it will retry to get external resource, retrying is done every 5 second",
+        help="how many times it will retry to get external resource, retrying is done every 10 second",
     )
     parser.add_argument("--generate_config_only", action="store_true", default=False,
         help="Only parse config.yaml and output it"
@@ -211,7 +211,7 @@ class TVLK:
         while True:
             attempt = attempt + 1
             try:
-                print("geting resource '%s' in stack '%s'" % (logical_id, stack), file=sys.stderr)
+                print("geting resource '%s' in stack '%s'" % (logical_id, stack))
                 ret = cf.describe_stack_resource(
                     StackName=argv[0],
                     LogicalResourceId=argv[1]
@@ -225,7 +225,7 @@ class TVLK:
                 if Options.retry >= 0 and attempt >= Options.retry:
                     raise e
                 else:
-                    time.sleep(5)
+                    time.sleep(10)
 
     def EC2PublicIp(cwd, instance_id):
         ec2 = get_ec2_client()
@@ -234,7 +234,7 @@ class TVLK:
         while True:
             attempt = attempt + 1
             try:
-                print("geting public ip of instance '%s'" % instance_id, file=sys.stderr)
+                print("geting public ip of instance '%s'" % instance_id)
                 ret = ec2_client.describe_instances(
                     InstanceIds=[instance_id]
                 )
@@ -245,7 +245,7 @@ class TVLK:
                 if Options.retry >= 0 and attempt >= Options.retry:
                     raise e
                 else:
-                    time.sleep(5)
+                    time.sleep(10)
 
     def EC2PrivateIp(cwd, instance_id):
         ec2 = get_ec2_client()
@@ -254,7 +254,7 @@ class TVLK:
         while True:
             attempt = attempt + 1
             try:
-                print("geting private ip of instance '%s'" % instance_id, file=sys.stderr)
+                print("geting private ip of instance '%s'" % instance_id)
                 ret = ec2_client.describe_instances(
                     InstanceIds=[instance_id]
                 )
@@ -265,7 +265,7 @@ class TVLK:
                 if Options.retry >= 0 and attempt >= Options.retry:
                     raise e
                 else:
-                    time.sleep(5)
+                    time.sleep(10)
 
 if __name__ == '__main__':
     main(sys.argv)
