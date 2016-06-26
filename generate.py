@@ -211,6 +211,7 @@ class TVLK:
         while True:
             attempt = attempt + 1
             try:
+                print("geting resource '%s' in stack '%s'" % (logical_id, stack), file=sys.stderr)
                 ret = cf.describe_stack_resource(
                     StackName=argv[0],
                     LogicalResourceId=argv[1]
@@ -233,6 +234,7 @@ class TVLK:
         while True:
             attempt = attempt + 1
             try:
+                print("geting public ip of instance '%s'" % instance_id, file=sys.stderr)
                 ret = ec2_client.describe_instances(
                     InstanceIds=[instance_id]
                 )
@@ -252,6 +254,7 @@ class TVLK:
         while True:
             attempt = attempt + 1
             try:
+                print("geting private ip of instance '%s'" % instance_id, file=sys.stderr)
                 ret = ec2_client.describe_instances(
                     InstanceIds=[instance_id]
                 )
