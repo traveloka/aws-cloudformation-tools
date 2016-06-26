@@ -181,7 +181,7 @@ def wait_stack_to_complete(stack_name, prev=None):
         try:
             if prev != None:
                 cur_stack = prev
-                prev = None:
+                prev = None
             else:
                 cur_stack = cf.describe_stacks(StackName=stack_name)
         except Exception as e:
