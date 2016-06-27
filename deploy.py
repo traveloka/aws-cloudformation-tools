@@ -177,22 +177,18 @@ def wait_stack_to_complete(stack_name, prev=None):
 
     print("Waiting stack '%s' to complete" % stack_name)
     while True:
-        print("Waiting...")
-        try:
-            if prev != None:
-                cur_stack = prev
-                prev = None
-            else:
-                cur_stack = cf.describe_stacks(StackName=stack_name)
-        except Exception as e:
-            pass
+        if prev != None:
+            cur_stack = prev
+            prev = None
         else:
-            match = re.search(r'^.*_(PROGRESS|FAILED|COMPLETE)$', cur_stack['Stacks'][0]['StackStatus'])
-            status = match.group(1)
-            if status == "COMPLETE":
-                return
-            elif status == "FAILED":
-                raise Exception("Stack '%s' is in failed state" % stack_name)
+            cur_stack = cf.describe_stacks(StackName=stack_name)
+
+        match = re.search(r'^.*_(PROGRESS|FAILED|COMPLETE)$', cur_stack['Stacks'][0]['StackStatus'])
+        status = match.group(1)
+        if status == "COMPLETE":
+            return
+        elif status == "FAILED":
+            raise Exception("Stack '%s' is in failed state" % stack_name)
 
         time.sleep(10)
 

@@ -206,7 +206,7 @@ class TVLK:
         logical_id = argv[1]
 
         cf = get_cf_client()
-        attempt = -1
+        attempt = 0
 
         while True:
             attempt = attempt + 1
@@ -222,14 +222,14 @@ class TVLK:
                 return ret["PhysicalResourceId"]
 
             except Exception as e:
-                if Options.retry >= 0 and attempt >= Options.retry:
+                if Options.retry >= 0 and attempt > Options.retry:
                     raise e
                 else:
                     time.sleep(10)
 
     def EC2PublicIp(cwd, instance_id):
         ec2 = get_ec2_client()
-        attempt = -1
+        attempt = 0
 
         while True:
             attempt = attempt + 1
@@ -242,14 +242,14 @@ class TVLK:
                 return ret['Association']['PublicIp']
 
             except Exception as e:
-                if Options.retry >= 0 and attempt >= Options.retry:
+                if Options.retry >= 0 and attempt > Options.retry:
                     raise e
                 else:
                     time.sleep(10)
 
     def EC2PrivateIp(cwd, instance_id):
         ec2 = get_ec2_client()
-        attempt = -1
+        attempt = 0
 
         while True:
             attempt = attempt + 1
@@ -262,7 +262,7 @@ class TVLK:
                 return ret['PrivateIpAddress']
 
             except Exception as e:
-                if Options.retry >= 0 and attempt >= Options.retry:
+                if Options.retry >= 0 and attempt > Options.retry:
                     raise e
                 else:
                     time.sleep(10)
