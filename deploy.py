@@ -187,7 +187,7 @@ def wait_stack_to_complete(stack_name, prev=None):
         except Exception as e:
             pass
         else:
-            match = re.search(r'^.*_(PROGRESS|FAILED|COMPLETE)$', what['Stacks'][0]['StackStatus'])
+            match = re.search(r'^.*_(PROGRESS|FAILED|COMPLETE)$', cur_stack['Stacks'][0]['StackStatus'])
             status = match.group(1)
             if status == "COMPLETE":
                 return
