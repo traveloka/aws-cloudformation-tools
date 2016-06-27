@@ -202,8 +202,8 @@ class TVLK:
         return process_object(cwd, cond1) or process_object(cwd, cond2)
 
     def CFStackResource(cwd, argv):
-        stack = argv[0]
-        logical_id = argv[1]
+        stack = process_object(cwd, argv[0])
+        logical_id = process_object(cwd, argv[1])
 
         cf = get_cf_client()
         attempt = 0
@@ -211,13 +211,13 @@ class TVLK:
         while True:
             attempt = attempt + 1
             try:
-                print("geting resource '%s' in stack '%s'" % (logical_id, stack))
+                print("Geting resource '%s' in stack '%s'" % (logical_id, stack))
                 ret = cf.describe_stack_resource(
-                    StackName=argv[0],
-                    LogicalResourceId=argv[1]
+                    StackName=stack,
+                    LogicalResourceId=logical_id
                 )
                 ret = ret["StackResourceDetail"]
-                if ret["ResourceStatus"] in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+                if ret["ResourceStatus"] not in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
                     raise Exception("resource '%s' in stack %s is not ready" % (logical_id, stack) )
                 return ret["PhysicalResourceId"]
 
@@ -228,13 +228,14 @@ class TVLK:
                     time.sleep(10)
 
     def EC2PublicIp(cwd, instance_id):
+        instance_id = process_object(cwd, instance_id)
         ec2 = get_ec2_client()
         attempt = 0
 
         while True:
             attempt = attempt + 1
             try:
-                print("geting public ip of instance '%s'" % instance_id)
+                print("Geting public ip of instance '%s'" % instance_id)
                 ret = ec2_client.describe_instances(
                     InstanceIds=[instance_id]
                 )
@@ -248,13 +249,14 @@ class TVLK:
                     time.sleep(10)
 
     def EC2PrivateIp(cwd, instance_id):
+        instance_id = process_object(cwd, instance_id)
         ec2 = get_ec2_client()
         attempt = 0
 
         while True:
             attempt = attempt + 1
             try:
-                print("geting private ip of instance '%s'" % instance_id)
+                print("Geting private ip of instance '%s'" % instance_id)
                 ret = ec2_client.describe_instances(
                     InstanceIds=[instance_id]
                 )

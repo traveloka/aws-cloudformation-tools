@@ -171,6 +171,7 @@ def deploy(stack):
 
         wait_stack_to_complete(stack_name)
         print("Stack '%s' deployed" % stack_name)
+        print()
 
 def wait_stack_to_complete(stack_name, prev=None):
     cf = get_cf_client()
