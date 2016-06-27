@@ -33,14 +33,19 @@ tmpdir = path.join(tempfile.gettempdir(), "deploy-" + str(int(random.random() * 
 generated_config = None
 config = {}
 
+class Options:
+    nodeps = False
 
 def main(argv):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("config", type=str, help="config.yaml to be used")
     parser.add_argument("-s", "--stack", type=str, default=None, help="which stack to deploy")
+    parser.add_argument("-n", "--nodeps", action="store_true", default=False, help="assume dependencies already deployed")
 
     argv = parser.parse_args(argv[1:])
+
+    Options.nodeps = argv.nodeps
 
     os.makedirs(tmpdir, exist_ok=True)
     try:
@@ -76,21 +81,22 @@ def main(argv):
 def deploy(stack):
     stack_obj = config['deploy']['stack'][stack]
 
-    if '_visited' not in stack_obj:
-        stack_obj['_visited'] = False
+    if not Options.nodeps:
+        if '_visited' not in stack_obj:
+            stack_obj['_visited'] = False
 
-    if stack_obj['_visited']:
-        return
+        if stack_obj['_visited']:
+            return
 
-    stack_obj['_visited'] = True
+        stack_obj['_visited'] = True
 
-    if 'ext_deps' in stack_obj:
-        for tmp in stack_obj['ext_deps']:
-            wait_stack_to_complete(tmp)
+        if 'ext_deps' in stack_obj:
+            for tmp in stack_obj['ext_deps']:
+                wait_stack_to_complete(tmp)
 
-    if 'deps' in stack_obj:
-        for tmp in stack_obj['deps']:
-            deploy(tmp)
+        if 'deps' in stack_obj:
+            for tmp in stack_obj['deps']:
+                deploy(tmp)
 
     if 'input' in stack_obj and 'name' in stack_obj:
         cf = get_cf_client()
