@@ -25,8 +25,6 @@ available custom function:
 - `TVLK::EC2PublicIp`, get public ip of existing EC2 instance
 - `TVLK::EC2PrivateIp`, get private ip of existing EC2 instance
 
-## deploy.py
-
 # TODO
 - add more documentation, usage, how to, etc.
 
