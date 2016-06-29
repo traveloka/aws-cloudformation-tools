@@ -249,6 +249,27 @@ class TVLK:
                 else:
                     time.sleep(10)
 
+    def EC2PublicName(cwd, instance_id):
+        instance_id = process_object(cwd, instance_id)
+        ec2 = get_ec2_client()
+        attempt = 0
+
+        while True:
+            attempt = attempt + 1
+            try:
+                print("Geting public name of instance '%s'" % instance_id)
+                ret = ec2_client.describe_instances(
+                    InstanceIds=[instance_id]
+                )
+                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
+                return ret['Association']['PublicDnsName']
+
+            except Exception as e:
+                if Options.retry >= 0 and attempt > Options.retry:
+                    raise e
+                else:
+                    time.sleep(10)
+
     def EC2PrivateIp(cwd, instance_id):
         instance_id = process_object(cwd, instance_id)
         ec2 = get_ec2_client()
@@ -263,6 +284,27 @@ class TVLK:
                 )
                 ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
                 return ret['PrivateIpAddress']
+
+            except Exception as e:
+                if Options.retry >= 0 and attempt > Options.retry:
+                    raise e
+                else:
+                    time.sleep(10)
+
+    def EC2PrivateName(cwd, instance_id):
+        instance_id = process_object(cwd, instance_id)
+        ec2 = get_ec2_client()
+        attempt = 0
+
+        while True:
+            attempt = attempt + 1
+            try:
+                print("Geting private name of instance '%s'" % instance_id)
+                ret = ec2_client.describe_instances(
+                    InstanceIds=[instance_id]
+                )
+                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
+                return ret['PrivateDnsName']
 
             except Exception as e:
                 if Options.retry >= 0 and attempt > Options.retry:
