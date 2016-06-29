@@ -97,14 +97,15 @@ def process_object(cwd, what):
 
 class TVLK:
     def FromFile(cwd, file_name):
+        file_name = path.join(cwd, file_name)
         try:
             ret = {}
-            with open(path.join(cwd, file_name)) as file:
+            with open(file_name) as file:
                 ret = yaml.load(file)
-            return process_object(cwd, ret)
+            return process_object(path.dirname(file_name), ret)
 
         except Exception as e:
-            raise Exception("Error Processing file '%s'" % path.join(cwd, file_name)) from e
+            raise Exception("Error Processing file '%s'" % file_name) from e
 
     def FromFolder(cwd, folder):
         ret = {}
