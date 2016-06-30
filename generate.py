@@ -73,7 +73,7 @@ def main(argv):
         root = json.dumps(config)
 
     with open(argv.output, 'w') as file:
-        print(root, file=file)
+        file.write(root)
 
 def process_object(cwd, what):
     if isinstance(what, list):
