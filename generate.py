@@ -47,7 +47,7 @@ def main(argv):
         help="Only parse config.yaml and output it"
     )
 
-    argv = parser.parse_args(argv[1:])
+    argv = parser.parse_args(argv)
 
     main_file = argv.main
     Options.retry = argv.retry
@@ -313,4 +313,4 @@ class TVLK:
                     time.sleep(10)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main(sys.argv[1:])
