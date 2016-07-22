@@ -118,6 +118,11 @@ class TVLK:
 
         return ret
 
+    def Base64(cwd, obj):
+        if not isinstance(obj, str):
+            raise Exception("Base64 only take str as argument")
+        return base64.b64encode(obj.encode("utf8")).decode("utf8")
+
     def Base64OfFile(cwd, file_name):
         file_name = path.join(cwd, file_name)
         with open(file_name, "rb") as file:
