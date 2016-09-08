@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+
+import argparse
+import boto3
+import sys
+
+
+def main(argv):
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("stack", type=str, help="Cloudformation stack")
+    parser.add_argument("name", type=str, help="Output Key of that stack")
+
+    argv = parser.parse_args(argv)
+
+    cf_client = boto3.client('cloudformation')
+    stack = cf_client.describe_stacks(StackName=argv.stack)['Stacks'][0]
+    for x in stack['Outputs']:
+        if x['OutputKey'] == argv.name:
+            print(x['OutputValue'], end='')
+            return
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
