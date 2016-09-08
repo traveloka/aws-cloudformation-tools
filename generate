@@ -2,56 +2,28 @@
 
 import argparse
 import base64
-import boto3
 import json
 import os
 import re
 import subprocess
 import sys
-import time
 import yaml
 from os import path
 
-_cf_client = None
-_ec2_client = None
-
-def get_cf_client():
-    global _cf_client
-    if _cf_client == None:
-        _cf_client = boto3.client('cloudformation')
-    return _cf_client
-
-def get_ec2_client():
-    global _ec2_client
-    if _ec2_client == None:
-        _ec2_client = boto3.client('ec2')
-    return _ec2_client
-
-
 config = {}
-
-class Options:
-    retry = 0
-
 
 def main(argv):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("main", type=str, help="main.yaml as input file")
-    parser.add_argument("output", type=str, help="output.json as output file")
-    parser.add_argument("-c", "--config", type=str, default=None, help="config.yaml to be used")
-    parser.add_argument("-r", "--retry", type=int, default=0,
-        help="how many times it will retry to get external resource, retrying is done every 10 second",
-    )
-    parser.add_argument("--generate_config_only", action="store_true", default=False,
-        help="Only parse config.yaml and output it"
-    )
+    parser.add_argument("main", type=str, help="main input file")
+    parser.add_argument("output", type=str, help="output file as json")
+    parser.add_argument("-c", "--config", type=str, default=None, help="config file")
 
     argv = parser.parse_args(argv)
 
     main_file = argv.main
-    Options.retry = argv.retry
 
+    # if config is provided, then process it multiple time until reach terminal state
     if argv.config != None:
         try:
             global config
@@ -65,16 +37,15 @@ def main(argv):
         except Exception as e:
             raise Exception("Error on processing config file") from e
 
-    root = None
-    if not argv.generate_config_only:
-        root = TVLK.FromFile(path.dirname(main_file), path.basename(main_file))
-        root = json.dumps(root)
-    else:
-        root = json.dumps(config)
+    root = json.dumps(
+        TVLK.FromFile(path.dirname(main_file), path.basename(main_file))
+    )
 
     with open(argv.output, 'w') as file:
         file.write(root)
 
+# generic object processsor
+# recursive if complex object and return value if simple type
 def process_object(cwd, what):
     if isinstance(what, list):
         return [process_object(cwd, item) for item in what]
@@ -88,6 +59,7 @@ def process_object(cwd, what):
                     return getattr(TVLK, match.group(1))(cwd, what[key])
                 else:
                     raise Exception("function '%s' must not have sibling" % key)
+                    # because it will raise ambiguity and inconsistency issue
             else:
                 ret[key] = process_object(cwd, what[key])
         return ret
@@ -95,7 +67,13 @@ def process_object(cwd, what):
     return what
 
 
+# This class is place holder for every TVLK::<function>
+# first argument is current directory of file that being processed
+# second argument can be arbitary data that passed by yaml document
 class TVLK:
+
+    # Parse yaml file
+    # Return : arbitary object, depend on content of file
     def FromFile(cwd, file_name):
         file_name = path.join(cwd, file_name)
         try:
@@ -107,38 +85,53 @@ class TVLK:
         except Exception as e:
             raise Exception("Error Processing file '%s'" % file_name) from e
 
+    # Parse every yaml (with yml or yaml extension) inside a folder,
+    # Return : Object with keys that correspondent to filename of every yaml file in that folder
     def FromFolder(cwd, folder):
         ret = {}
         cwd = path.join(cwd, folder)
 
         for file_name in os.listdir(cwd):
-            match = re.search(r'^(.*)\.yaml$', file_name)
+            match = re.search(r'^(.*)\.(yml|yaml)$', file_name)
             if match:
                 ret[match.group(1)] = TVLK.FromFile(cwd, file_name)
 
         return ret
 
+    # Convert string, to Base64 string, input must be a string
+    # Return : String
     def Base64(cwd, obj):
         if not isinstance(obj, str):
-            raise Exception("Base64 only take str as argument")
+            raise Exception("Parameter is not a string")
         return base64.b64encode(obj.encode("utf8")).decode("utf8")
 
+    # Read file, file must be encoded in utf8
+    # Return : String
+    def ReadTextFile(cwd, file_name):
+        file_name = path.join(cwd, file_name)
+        with open(file_name, "r") as file:
+            return file.read()
+
+    # Read file
+    # Return : Base64 representation of that file
     def Base64OfFile(cwd, file_name):
         file_name = path.join(cwd, file_name)
         with open(file_name, "rb") as file:
             return base64.b64encode(file.read()).decode("utf8")
 
-    def Base64OfMakefileTarget(cwd, argv):
-        makefile_dir = argv[0]
-        makefile_target = argv[1]
-        cwd = path.join(cwd, makefile_dir)
-        proc = subprocess.Popen(["make", makefile_target], cwd=cwd)
-        proc.wait()
+    # Run a command, and return stdout of that command, must be formated in utf8 encoding
+    # command is executed with current directory pointed to same directory that contain the yaml file
+    # Return : String
+    def RunCommand(cwd, argv):
+        proc = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE)
+        outs, errs = proc.communicate()
         if proc.returncode != 0:
-            raise Exception("Makefile failed to build target %s" % path.join(cwd, makefile_target))
+            raise Exception("RunCommand retured with exit code %d" % proc.returncode)
 
-        return TVLK.Base64OfFile(cwd, makefile_target)
+        return outs.decode('utf8')
 
+    # Get arbitary data from config
+    # Return : can be anything
     def Config(cwd, key_list):
         try:
             ret = config
@@ -150,11 +143,12 @@ class TVLK:
 
         return ret
 
+    # Merge multiple objects into single object, every key in each object must be mutualy exclusive
+    # Return : Object
     def Merge(cwd, obj_list):
         ret = {}
         obj_list = process_object(cwd, obj_list)
         for item in obj_list:
-            item = process_object(cwd, item)
             for key in item:
                 if key in ret:
                     raise Exception("'%s' is already declared" % key)
@@ -162,19 +156,17 @@ class TVLK:
 
         return ret
 
+    # Merge multiple list into single list
+    # Return : list
     def MergeList(cwd, list_list):
         ret = []
+        list_list = process_object(cwd, list_list)
         for item in list_list:
-            item = process_object(cwd, item)
             ret.extend(item)
 
         return ret
 
-    def Select(cwd, argv):
-        index = argv[0]
-        collection = argv[1]
-        return process_object(cwd, collection[index])
-
+    # Concat string
     def Concat(cwd, obj_list):
         obj_list = process_object(cwd, obj_list)
         return "".join(obj_list)
@@ -201,121 +193,17 @@ class TVLK:
         cond2 = argv[1]
         return process_object(cwd, cond1) and process_object(cwd, cond2)
 
-
     def Or(cwd, argv):
         cond1 = argv[0]
         cond2 = argv[1]
         return process_object(cwd, cond1) or process_object(cwd, cond2)
 
-    def CFStackResource(cwd, argv):
-        stack = process_object(cwd, argv[0])
-        logical_id = process_object(cwd, argv[1])
+    # Select an item from list
+    def Select(cwd, argv):
+        index = argv[0]
+        collection = argv[1]
+        return process_object(cwd, collection[index])
 
-        cf = get_cf_client()
-        attempt = 0
-
-        while True:
-            attempt = attempt + 1
-            try:
-                print("Geting resource '%s' in stack '%s'" % (logical_id, stack))
-                ret = cf.describe_stack_resource(
-                    StackName=stack,
-                    LogicalResourceId=logical_id
-                )
-                ret = ret["StackResourceDetail"]
-                if ret["ResourceStatus"] not in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
-                    raise Exception("resource '%s' in stack %s is not ready" % (logical_id, stack) )
-                return ret["PhysicalResourceId"]
-
-            except Exception as e:
-                if Options.retry >= 0 and attempt > Options.retry:
-                    raise e
-                else:
-                    time.sleep(10)
-
-    def EC2PublicIp(cwd, instance_id):
-        instance_id = process_object(cwd, instance_id)
-        ec2 = get_ec2_client()
-        attempt = 0
-
-        while True:
-            attempt = attempt + 1
-            try:
-                print("Geting public ip of instance '%s'" % instance_id)
-                ret = ec2_client.describe_instances(
-                    InstanceIds=[instance_id]
-                )
-                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
-                return ret['Association']['PublicIp']
-
-            except Exception as e:
-                if Options.retry >= 0 and attempt > Options.retry:
-                    raise e
-                else:
-                    time.sleep(10)
-
-    def EC2PublicName(cwd, instance_id):
-        instance_id = process_object(cwd, instance_id)
-        ec2 = get_ec2_client()
-        attempt = 0
-
-        while True:
-            attempt = attempt + 1
-            try:
-                print("Geting public name of instance '%s'" % instance_id)
-                ret = ec2_client.describe_instances(
-                    InstanceIds=[instance_id]
-                )
-                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
-                return ret['Association']['PublicDnsName']
-
-            except Exception as e:
-                if Options.retry >= 0 and attempt > Options.retry:
-                    raise e
-                else:
-                    time.sleep(10)
-
-    def EC2PrivateIp(cwd, instance_id):
-        instance_id = process_object(cwd, instance_id)
-        ec2 = get_ec2_client()
-        attempt = 0
-
-        while True:
-            attempt = attempt + 1
-            try:
-                print("Geting private ip of instance '%s'" % instance_id)
-                ret = ec2_client.describe_instances(
-                    InstanceIds=[instance_id]
-                )
-                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
-                return ret['PrivateIpAddress']
-
-            except Exception as e:
-                if Options.retry >= 0 and attempt > Options.retry:
-                    raise e
-                else:
-                    time.sleep(10)
-
-    def EC2PrivateName(cwd, instance_id):
-        instance_id = process_object(cwd, instance_id)
-        ec2 = get_ec2_client()
-        attempt = 0
-
-        while True:
-            attempt = attempt + 1
-            try:
-                print("Geting private name of instance '%s'" % instance_id)
-                ret = ec2_client.describe_instances(
-                    InstanceIds=[instance_id]
-                )
-                ret = ret['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]
-                return ret['PrivateDnsName']
-
-            except Exception as e:
-                if Options.retry >= 0 and attempt > Options.retry:
-                    raise e
-                else:
-                    time.sleep(10)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
