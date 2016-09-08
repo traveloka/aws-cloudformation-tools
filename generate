@@ -18,6 +18,7 @@ def main(argv):
     parser.add_argument("main", type=str, help="main input file")
     parser.add_argument("output", type=str, help="output file as json")
     parser.add_argument("-c", "--config", type=str, default=None, help="config file")
+    parser.add_argument("-p", "--prety_print", action='store_true', default=False, help="prety print output json")
 
     argv = parser.parse_args(argv)
 
@@ -38,7 +39,8 @@ def main(argv):
             raise Exception("Error on processing config file") from e
 
     root = json.dumps(
-        TVLK.FromFile(path.dirname(main_file), path.basename(main_file))
+        TVLK.FromFile(path.dirname(main_file), path.basename(main_file)),
+        indent=2 if argv.prety_print else None
     )
 
     with open(argv.output, 'w') as file:
