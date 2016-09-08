@@ -4,7 +4,7 @@
 
 usage:
 
-    generate.py <main.yaml> [-c config.yaml] [-o output.json] [-r retry_count]
+    generate.py <main.yaml> <output.json> [-c config.yaml]
 
 available custom function:
 
@@ -25,6 +25,13 @@ available custom function:
 - `TVLK::Not`,
 - `TVLK::Select`
 
+## get_cf_output
+Get output value of a cloudformation stack
+
+usage:
+
+    get_cf_output <stack-name> <output-key>
+
+
 # TODO
 - add more documentation, usage, how to, etc.
-
