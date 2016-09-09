@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -euo pipefail
+cd "$(dirname "$0")"
+
+virtualenv -p python3 env
+
+cat << '__EOF__' > env-wrapper
+#!/bin/bash
+
+source "$(dirname "$0")/env/bin/activate"
+
+exec "$@"
+__EOF__
+
+chmod 755 env-wrapper
+./env-wrapper pip install -r requirements.txt

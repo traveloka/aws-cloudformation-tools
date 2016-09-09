@@ -4,7 +4,7 @@
 
 usage:
 
-    generate.py <main.yaml> <output.json> [-c config.yaml]
+    generate.py <main.yaml> <output.json> [-c config.yaml] [-p]
 
 available custom function:
 
