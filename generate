@@ -87,7 +87,20 @@ class TVLK:
         except Exception as e:
             raise Exception("Error Processing file '%s'" % file_name) from e
 
-    # Parse every yaml (with yml or yaml extension) inside a folder,
+    # Parse every yaml (with yml or yaml extension) inside a folder, and combine into single list
+    # Return : list of Object of every yaml file in that folder
+    def ArrayFromFolder(cwd, folder):
+        ret = []
+        cwd = path.join(cwd, folder)
+
+        for file_name in sorted(os.listdir(cwd)):
+            match = re.search(r'^(.*)\.(yml|yaml)$', file_name)
+            if match:
+                ret.append(TVLK.FromFile(cwd, file_name))
+
+        return ret
+
+    # Parse every yaml (with yml or yaml extension) inside a folder, and combine into single object
     # Return : Object with keys that correspondent to filename of every yaml file in that folder
     def FromFolder(cwd, folder):
         ret = {}
