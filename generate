@@ -40,7 +40,8 @@ def main(argv):
 
     root = json.dumps(
         TVLK.FromFile(path.dirname(main_file), path.basename(main_file)),
-        indent=2 if argv.prety_print else None
+        indent=2 if argv.prety_print else None,
+        sort_keys=True
     )
 
     with open(argv.output, 'w') as file:
